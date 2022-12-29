@@ -273,19 +273,36 @@ class EFM8Loader:
         #however it allows to verify written bytes
         #we will exploit this feature to dump the flash contents
         ih = IntelHex()
+        
+        byte_dict = [
+            255, 0, 144, 224, 2, 240, 18, 229, 36, 84, 48, 122, 121, 123, 96, 128, 
+            163, 3, 7, 68, 253, 23, 43, 93, 65, 6, 46, 100, 66, 4, 254, 73, 47, 34, 
+            75, 117, 239, 45, 52, 228, 79, 127, 245, 95, 194, 252, 32, 126, 210, 58, 
+            112, 16, 133, 64, 70, 40, 67, 33, 83, 148, 1, 8, 5, 44, 231, 80, 87, 251, 
+            156, 238, 20, 195, 41, 42, 51, 225, 11, 15, 49, 10, 131, 35, 191, 53, 130, 
+            247, 71, 176, 208, 237, 166, 30, 164, 192, 12, 76, 94, 54, 236, 85, 248, 
+            72, 37, 86, 116, 250, 55, 56, 69, 221, 14, 61, 211, 180, 38, 172, 13, 81, 
+            9, 39, 193, 226, 244, 137, 26, 160, 138, 17, 28, 74, 90, 246, 50, 209, 233,
+            227, 249, 22, 175, 21, 149, 205, 59, 82, 88, 78, 57, 200, 31, 62, 92, 212, 
+            242, 60, 91, 179, 235, 24, 178, 152, 170, 173, 197, 169, 147, 167, 190, 207, 
+            213, 89, 129, 77, 234, 19, 110, 142, 232, 223, 25, 158, 171, 187, 125, 153, 
+            206, 27, 143, 159, 174, 189, 63, 101, 202, 204, 146, 201, 222, 109, 154, 196, 
+            219, 162, 104, 120, 139, 177, 185, 198, 216, 230, 98, 102, 140, 168, 106, 155, 
+            29, 97, 115, 141, 157, 165, 182, 184, 135, 215, 241, 105, 114, 136, 186, 203, 161, 
+            124, 188, 220, 132, 217, 118, 103, 113, 134, 111, 151, 181, 183, 214, 218, 119, 
+            243, 108, 150, 107, 199, 99, 145]
+        
         for address in range(self.flash_size):
             #test one byte by byte
-            #try 0xFF and 0x00 first and then loop between 254 to 1
-            if (self.verify(address, [0xFF]) == RESPONSE.ACK):
-                ih[address] = 0xFF
-            elif (self.verify(address, [0x00]) == RESPONSE.ACK):
-                ih[address] = 0
-            else:
-                for byte in range(0xFE, -1, -1):
-                    if (self.verify(address, [byte]) == RESPONSE.ACK):
-                        #success, the flash content on this address euals <byte>
-                        ih[address] = byte
-                        break
+            found = False
+            for byte in byte_dict:
+                if (self.verify(address, [byte]) == RESPONSE.ACK):
+                    #success, the flash content on this address euals <byte>
+                    ih[address] = byte
+                    found = True
+                    break
+            if not found:
+                print("\r>ERR: flash[0x%06X] could not be guessed")
             print("\r> flash[0x%06X] = 0x%02X" % (address, byte), end="")
             sys.stdout.flush()
 
