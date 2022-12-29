@@ -272,23 +272,21 @@ class EFM8Loader:
         #the bootloader protocol does not allow reading flash
         #however it allows to verify written bytes
         #we will exploit this feature to dump the flash contents
-        #for now assume 8kb flash
-        flash_size = 8 * 1024
         ih = IntelHex()
-        for address in range(flash_size):
+        for address in range(self.flash_size):
             #test one byte by byte
-            #first check 0x00
-            byte = 0
-            if (self.verify(address, [byte]) == RESPONSE.ACK):
-                ih[address] = byte
+            #try 0xFF and 0x00 first and then loop between 254 to 1
+            if (self.verify(address, [0xFF]) == RESPONSE.ACK):
+                ih[address] = 0xFF
+            elif (self.verify(address, [0x00]) == RESPONSE.ACK):
+                ih[address] = 0
             else:
-                #now start with 0xFF (empty flash)
-                for byte in range(0xFF, -1, -1):
+                for byte in range(0xFE, -1, -1):
                     if (self.verify(address, [byte]) == RESPONSE.ACK):
                         #success, the flash content on this address euals <byte>
                         ih[address] = byte
                         break
-            print("\r> flash[0x%04X] = 0x%02X" % (address, byte), end="")
+            print("\r> flash[0x%06X] = 0x%02X" % (address, byte), end="")
             sys.stdout.flush()
 
         print("\n> finished")
