@@ -42,7 +42,9 @@ class RESPONSE:
     RANGE_ERROR = 0x41
     BAD_ID      = 0x42
     CRC_ERROR   = 0x43
-    TO_STR = { ACK: "ACK", RANGE_ERROR : "RANGE_ERROR", BAD_ID : "BAD_ID", CRC_ERROR : "CRC_ERROR" }
+    TIMEOUT     = -1
+    SERIAL_ERR  = -2
+    TO_STR = { ACK: "ACK", RANGE_ERROR : "RANGE_ERROR", BAD_ID : "BAD_ID", CRC_ERROR : "CRC_ERROR", TIMEOUT : "TIMEOUT"}
 
     @staticmethod
     def to_string(res):
@@ -190,15 +192,16 @@ class EFM8Loader:
             res_bytes = self.serial.read(1)
             #res_bytes = b"\x40"
             if (len(res_bytes) != 1):
-                sys.exit("> ERROR: serial read timed out")
-                return 0
+                print("> ERROR: serial read timed out")
+                return RESPONSE.TIMEOUT
             else:
                 res = res_bytes[0]
                 if(self.debug): print("> reply 0x%02X" % (res))
                 return res
 
         except serial.SerialException:
-            sys.exit("ERROR: failed to send data")
+            print("ERROR: failed to send data")
+            return RESPONSE.SERIAL_ERR
 
 
     def check_id(self, device_id, derivative_id):
@@ -296,13 +299,19 @@ class EFM8Loader:
             #test one byte by byte
             found = False
             for byte in byte_dict:
-                if (self.verify(address, [byte]) == RESPONSE.ACK):
-                    #success, the flash content on this address euals <byte>
+                ret = self.verify(address, [byte])
+                if (ret == RESPONSE.ACK):
+                    # success, the flash content on this address equals to the tried
                     ih[address] = byte
                     found = True
                     break
+                elif (ret == RESPONSE.TIMEOUT or ret == RESPONSE.SERIAL_ERR):
+                    print("\r>ERR: serial error/timeout when reading at 0x%06X filling it with 0xFF" % (address))
+                    ih[address] = 0xFF
+                    found = True
+                    break
             if not found:
-                print("\r>ERR: flash[0x%06X] could not be guessed")
+                print("\r>ERR: flash[0x%06X] could not be guessed" % (address))
             print("\r> flash[0x%06X] = 0x%02X" % (address, byte), end="")
             sys.stdout.flush()
 
